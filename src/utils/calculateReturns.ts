@@ -1,6 +1,13 @@
 
 export type AssetType = 'etf' | 'crypto' | 'realestate' | 'fd' | 'loan';
 
+export interface PortfolioItem {
+    id: string;
+    label: string;
+    config: CalculationInput;
+    color?: string; // Hex color for the chart line
+}
+
 export interface CalculationResult {
     year: number;
     investedAmount: number;
@@ -16,6 +23,15 @@ export interface CalculationResult {
     outstandingPrincipal?: number;
     // FD specific
     balance?: number;
+}
+
+export interface PortfolioYearSummary {
+    year: number;
+    totalAssets: number;
+    totalLiabilities: number;
+    netWorth: number;
+    investedAmount: number;
+    itemBreakdown: Record<string, number>; // itemId -> totalValue
 }
 
 export interface CalculationInput {
@@ -221,6 +237,59 @@ export const calculateReturns = (input: CalculationInput): CalculationResult[] =
         case 'etf':
         default: return calcEtfCrypto(input);
     }
+};
+
+export const calculatePortfolio = (items: PortfolioItem[]): PortfolioYearSummary[] => {
+    if (items.length === 0) return [];
+
+    // 1. Calculate individual results for each item
+    const itemResults = items.map(item => ({
+        id: item.id,
+        assetType: item.config.assetType,
+        results: calculateReturns(item.config)
+    }));
+
+    // 2. Find max years across all items
+    const maxYears = Math.max(...itemResults.map(ir => ir.results.length));
+
+    const summary: PortfolioYearSummary[] = [];
+
+    for (let year = 1; year <= maxYears; year++) {
+        let totalAssets = 0;
+        let totalLiabilities = 0;
+        let investedAmount = 0;
+        const itemBreakdown: Record<string, number> = {};
+
+        itemResults.forEach(ir => {
+            const hasDataThisYear = year <= ir.results.length;
+            const resultIdx = Math.min(year - 1, ir.results.length - 1);
+            const result = ir.results[resultIdx];
+
+            if (ir.assetType === 'loan') {
+                const outstanding = hasDataThisYear ? (result.outstandingPrincipal ?? 0) : 0;
+                totalLiabilities += outstanding;
+                itemBreakdown[ir.id] = -outstanding;
+            } else {
+                // If tenure ended, we assume the final total value is held (no more SIPs, but it stays as an asset)
+                const value = hasDataThisYear ? result.totalValue : ir.results[ir.results.length - 1].totalValue;
+                const invested = hasDataThisYear ? result.investedAmount : ir.results[ir.results.length - 1].investedAmount;
+                totalAssets += value;
+                investedAmount += invested;
+                itemBreakdown[ir.id] = value;
+            }
+        });
+
+        summary.push({
+            year,
+            totalAssets: Math.round(totalAssets),
+            totalLiabilities: Math.round(totalLiabilities),
+            netWorth: Math.round(totalAssets - totalLiabilities),
+            investedAmount: Math.round(investedAmount),
+            itemBreakdown
+        });
+    }
+
+    return summary;
 };
 
 export const calculateEMI = (loanAmount: number, annualRate: number, tenureMonths: number): number => {

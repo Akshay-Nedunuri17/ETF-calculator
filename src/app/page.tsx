@@ -7,11 +7,16 @@ import { AssetSelector } from "@/components/Calculator/AssetSelector";
 import { InputSection } from "@/components/Calculator/InputSection";
 import { ResultsSection } from "@/components/Calculator/ResultsSection";
 import { ChartsSection } from "@/components/Calculator/ChartsSection";
-import { calculateReturns, calculateEMI, CalculationResult, AssetType } from "@/utils/calculateReturns";
+import { calculateReturns, calculateEMI, calculatePortfolio, CalculationResult, AssetType, PortfolioItem, PortfolioYearSummary } from "@/utils/calculateReturns";
 import { ASSET_CONFIGS } from "@/utils/assetConfig";
-import { Download, Share2, RefreshCw } from "lucide-react";
+import { Download, Share2, RefreshCw, Plus } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+
+import { DashboardNav, ViewMode } from "@/components/Calculator/DashboardNav";
+import { PortfolioDashboard } from "@/components/Calculator/PortfolioDashboard";
+import { ComparisonDashboard } from "@/components/Calculator/ComparisonDashboard";
+import { PortfolioManager } from "@/components/Calculator/PortfolioManager";
 
 // Static map — Tailwind JIT cannot resolve dynamically interpolated class names
 const blurbHeadingClass: Record<string, string> = {
@@ -85,6 +90,9 @@ export default function Home() {
     const [loanRate, setLoanRate] = useState(DEFAULTS.loanRate);
     const [loanTenureMonths, setLoanTenureMonths] = useState(DEFAULTS.loanTenureMonths);
 
+    // Portfolio State
+    const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+    const [activeView, setActiveView] = useState<ViewMode>('calculator');
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load from LocalStorage
@@ -112,6 +120,8 @@ export default function Home() {
                 setLoanAmount(p.loanAmount ?? DEFAULTS.loanAmount);
                 setLoanRate(p.loanRate ?? DEFAULTS.loanRate);
                 setLoanTenureMonths(p.loanTenureMonths ?? DEFAULTS.loanTenureMonths);
+                setPortfolio(p.portfolio ?? []);
+                setActiveView(p.activeView ?? 'calculator');
             } catch (e) {
                 console.error("Failed to parse saved data", e);
             }
@@ -128,13 +138,15 @@ export default function Home() {
             propertyValue, rentalYield, appreciationRate,
             fdPrincipal, fdRate, fdTenureMonths, compoundingFrequency,
             loanAmount, loanRate, loanTenureMonths,
+            portfolio, activeView
         }));
     }, [
         assetType, initialInvestment, monthlyInvestment, annualReturnRate, years,
         inflationRate, stepUpPercentage, expenseRatio, showInflation,
         propertyValue, rentalYield, appreciationRate,
         fdPrincipal, fdRate, fdTenureMonths, compoundingFrequency,
-        loanAmount, loanRate, loanTenureMonths, isLoaded,
+        loanAmount, loanRate, loanTenureMonths,
+        portfolio, activeView, isLoaded,
     ]);
 
     // Calculations
@@ -178,6 +190,74 @@ export default function Home() {
         [assetType, loanAmount, loanRate, loanTenureMonths]
     );
 
+    // Portfolio Summary Calculation
+    const portfolioSummary = useMemo(() => {
+        return calculatePortfolio(portfolio);
+    }, [portfolio]);
+
+    const itemAssetTypes = useMemo(() => {
+        const mapping: Record<string, AssetType> = {};
+        portfolio.forEach(item => mapping[item.id] = item.config.assetType);
+        return mapping;
+    }, [portfolio]);
+
+    const handleAddToPortfolio = () => {
+        const label = prompt("Enter a label for this investment/loan:", `${ASSET_CONFIGS[assetType].label} ${new Date().toLocaleDateString()}`);
+        if (!label) return;
+
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+        const color = colors[portfolio.length % colors.length];
+
+        const newItem: PortfolioItem = {
+            id: Date.now().toString(),
+            label,
+            color,
+            config: {
+                assetType, initialInvestment, monthlyInvestment, annualReturnRate, years,
+                inflationRate: showInflation ? inflationRate : 0,
+                stepUpPercentage, expenseRatio, propertyValue, rentalYield, appreciationRate,
+                fdPrincipal, fdRate, fdTenureMonths, compoundingFrequency,
+                loanAmount, loanRate, loanTenureMonths
+            }
+        };
+
+        setPortfolio([...portfolio, newItem]);
+        alert("Added to portfolio! Switch to Dashboard view to see cumulative tracking.");
+    };
+
+    const handleRemoveFromPortfolio = (id: string) => {
+        if (confirm("Remove this item from your portfolio?")) {
+            setPortfolio(portfolio.filter(item => item.id !== id));
+        }
+    };
+
+    const handleEditPortfolioItem = (item: PortfolioItem) => {
+        const { config: c } = item;
+        setAssetType(c.assetType);
+        if (c.initialInvestment !== undefined) setInitialInvestment(c.initialInvestment);
+        if (c.monthlyInvestment !== undefined) setMonthlyInvestment(c.monthlyInvestment);
+        if (c.annualReturnRate !== undefined) setAnnualReturnRate(c.annualReturnRate);
+        if (c.years !== undefined) setYears(c.years);
+        if (c.inflationRate !== undefined) {
+            setInflationRate(c.inflationRate);
+            setShowInflation(c.inflationRate > 0);
+        }
+        if (c.stepUpPercentage !== undefined) setStepUpPercentage(c.stepUpPercentage);
+        if (c.expenseRatio !== undefined) setExpenseRatio(c.expenseRatio);
+        if (c.propertyValue !== undefined) setPropertyValue(c.propertyValue);
+        if (c.rentalYield !== undefined) setRentalYield(c.rentalYield);
+        if (c.appreciationRate !== undefined) setAppreciationRate(c.appreciationRate);
+        if (c.fdPrincipal !== undefined) setFdPrincipal(c.fdPrincipal);
+        if (c.fdRate !== undefined) setFdRate(c.fdRate);
+        if (c.fdTenureMonths !== undefined) setFdTenureMonths(c.fdTenureMonths);
+        if (c.compoundingFrequency !== undefined) setCompoundingFrequency(c.compoundingFrequency);
+        if (c.loanAmount !== undefined) setLoanAmount(c.loanAmount);
+        if (c.loanRate !== undefined) setLoanRate(c.loanRate);
+        if (c.loanTenureMonths !== undefined) setLoanTenureMonths(c.loanTenureMonths);
+
+        setActiveView('calculator');
+    };
+
     const config = ASSET_CONFIGS[assetType];
 
     const handleReset = () => {
@@ -211,7 +291,7 @@ export default function Home() {
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`${assetType}-investment-report.pdf`);
+                pdf.save(`${activeView === 'calculator' ? assetType : activeView}-report.pdf`);
             } catch (error) {
                 console.error("Error generating PDF", error);
                 alert("Failed to generate PDF. Please try again.");
@@ -238,128 +318,155 @@ export default function Home() {
         <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950 transition-colors duration-300 font-inter">
             <Navbar />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="calculator-content">
-                {/* Hero */}
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-                        Investment Calculator
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+                {/* Hero Section */}
+                <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <h1 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
+                        WealthCalc <span className="text-blue-600 dark:text-blue-500 italic">India</span>
                     </h1>
-                    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                        {config.description}
+                    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
+                        {activeView === 'calculator'
+                            ? config.description
+                            : activeView === 'comparison'
+                                ? "Side-by-side growth comparison of all your added assets."
+                                : "The power of compounding across your entire financial life."}
                     </p>
                 </div>
 
-                {/* Asset Selector */}
-                <div className="mb-8">
-                    <AssetSelector selected={assetType} onSelect={setAssetType} />
-                </div>
-
-                {/* Results */}
-                <ResultsSection
-                    assetType={assetType}
-                    investedAmount={finalResult.investedAmount}
-                    estimatedReturns={finalResult.estimatedReturns}
-                    totalValue={finalResult.totalValue}
-                    inflationAdjustedValue={showInflation ? finalResult.inflationAdjustedValue : undefined}
-                    propertyValue={finalResult.propertyValue}
-                    cumulativeRental={finalResult.cumulativeRental}
-                    emi={Math.round(emi)}
-                    interestPaid={finalResult.interestPaid}
-                    outstandingPrincipal={finalResult.outstandingPrincipal}
+                <DashboardNav
+                    activeView={activeView}
+                    onViewChange={setActiveView}
+                    portfolioCount={portfolio.length}
                 />
 
-                {/* Main Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left: Inputs */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <InputSection
-                            assetType={assetType}
-                            initialInvestment={initialInvestment}
-                            setInitialInvestment={setInitialInvestment}
-                            monthlyInvestment={monthlyInvestment}
-                            setMonthlyInvestment={setMonthlyInvestment}
-                            annualReturnRate={annualReturnRate}
-                            setAnnualReturnRate={setAnnualReturnRate}
-                            years={years}
-                            setYears={setYears}
-                            inflationRate={inflationRate}
-                            setInflationRate={setInflationRate}
-                            stepUpPercentage={stepUpPercentage}
-                            setStepUpPercentage={setStepUpPercentage}
-                            expenseRatio={expenseRatio}
-                            setExpenseRatio={setExpenseRatio}
-                            showInflation={showInflation}
-                            setShowInflation={setShowInflation}
-                            propertyValue={propertyValue}
-                            setPropertyValue={setPropertyValue}
-                            rentalYield={rentalYield}
-                            setRentalYield={setRentalYield}
-                            appreciationRate={appreciationRate}
-                            setAppreciationRate={setAppreciationRate}
-                            fdPrincipal={fdPrincipal}
-                            setFdPrincipal={setFdPrincipal}
-                            fdRate={fdRate}
-                            setFdRate={setFdRate}
-                            fdTenureMonths={fdTenureMonths}
-                            setFdTenureMonths={setFdTenureMonths}
-                            compoundingFrequency={compoundingFrequency}
-                            setCompoundingFrequency={setCompoundingFrequency}
-                            loanAmount={loanAmount}
-                            setLoanAmount={setLoanAmount}
-                            loanRate={loanRate}
-                            setLoanRate={setLoanRate}
-                            loanTenureMonths={loanTenureMonths}
-                            setLoanTenureMonths={setLoanTenureMonths}
-                        />
-
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={handleReset} className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md transition-all font-medium">
-                                <RefreshCw className="w-4 h-4" /> Reset
-                            </button>
-                            <button onClick={handleShare} className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-100 dark:border-blue-900 rounded-xl text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all font-medium">
-                                <Share2 className="w-4 h-4" /> Share
-                            </button>
-                        </div>
-                        <button onClick={handleDownloadPDF} className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold hover:shadow-lg hover:translate-y-[-2px] transition-all transform duration-200">
-                            <Download className="w-5 h-5" /> Download Report
-                        </button>
-                    </div>
-
-                    {/* Right: Charts & Info */}
-                    <div className="lg:col-span-8 space-y-8">
-                        <ChartsSection
-                            assetType={assetType}
-                            data={results}
-                            investedAmount={finalResult.investedAmount}
-                            estimatedReturns={finalResult.estimatedReturns}
-                            showInflation={showInflation}
-                        />
-
-                        {/* Info blurbs */}
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                                Understanding {config.label} Investment
-                            </h3>
-                            <div className="grid md:grid-cols-3 gap-6 text-sm">
-                                {config.infoBlurbs.map((blurb, i) => (
-                                    <div key={i} className="space-y-2">
-                                        <h4 className={`font-semibold ${blurbHeadingClass[blurb.color] ?? 'text-gray-600 dark:text-gray-400'}`}>
-                                            {blurb.title}
-                                        </h4>
-                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{blurb.body}</p>
-                                    </div>
-                                ))}
+                <div id="calculator-content">
+                    {activeView === 'calculator' && (
+                        <>
+                            <div className="mb-10">
+                                <AssetSelector selected={assetType} onSelect={setAssetType} />
                             </div>
-                        </div>
-                    </div>
+
+                            <ResultsSection
+                                assetType={assetType}
+                                investedAmount={finalResult.investedAmount}
+                                estimatedReturns={finalResult.estimatedReturns}
+                                totalValue={finalResult.totalValue}
+                                inflationAdjustedValue={showInflation ? finalResult.inflationAdjustedValue : undefined}
+                                propertyValue={finalResult.propertyValue}
+                                cumulativeRental={finalResult.cumulativeRental}
+                                emi={emi}
+                                principalPaid={finalResult.principalPaid}
+                                interestPaid={finalResult.interestPaid}
+                                outstandingPrincipal={finalResult.outstandingPrincipal}
+                            />
+
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                {/* Left Side: Controls */}
+                                <div className="lg:col-span-4 space-y-7">
+                                    <InputSection
+                                        assetType={assetType}
+                                        initialInvestment={initialInvestment} setInitialInvestment={setInitialInvestment}
+                                        monthlyInvestment={monthlyInvestment} setMonthlyInvestment={setMonthlyInvestment}
+                                        annualReturnRate={annualReturnRate} setAnnualReturnRate={setAnnualReturnRate}
+                                        years={years} setYears={setYears}
+                                        inflationRate={inflationRate} setInflationRate={setInflationRate}
+                                        stepUpPercentage={stepUpPercentage} setStepUpPercentage={setStepUpPercentage}
+                                        expenseRatio={expenseRatio} setExpenseRatio={setExpenseRatio}
+                                        showInflation={showInflation} setShowInflation={setShowInflation}
+                                        propertyValue={propertyValue} setPropertyValue={setPropertyValue}
+                                        rentalYield={rentalYield} setRentalYield={setRentalYield}
+                                        appreciationRate={appreciationRate} setAppreciationRate={setAppreciationRate}
+                                        fdPrincipal={fdPrincipal} setFdPrincipal={setFdPrincipal}
+                                        fdRate={fdRate} setFdRate={setFdRate}
+                                        fdTenureMonths={fdTenureMonths} setFdTenureMonths={setFdTenureMonths}
+                                        compoundingFrequency={compoundingFrequency} setCompoundingFrequency={setCompoundingFrequency}
+                                        loanAmount={loanAmount} setLoanAmount={setLoanAmount}
+                                        loanRate={loanRate} setLoanRate={setLoanRate}
+                                        loanTenureMonths={loanTenureMonths} setLoanTenureMonths={setLoanTenureMonths}
+                                    />
+
+                                    {/* Action Buttons */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button onClick={handleReset} className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md transition-all font-medium">
+                                            <RefreshCw className="w-4 h-4" /> Reset
+                                        </button>
+                                        <button onClick={handleShare} className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-100 dark:border-blue-900 rounded-xl text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all font-medium">
+                                            <Share2 className="w-4 h-4" /> Share
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={handleAddToPortfolio}
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-bold hover:shadow-lg hover:translate-y-[-2px] transition-all transform duration-200"
+                                    >
+                                        <Plus className="w-5 h-5" /> Add to Portfolio
+                                    </button>
+                                    <button onClick={handleDownloadPDF} className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-bold hover:shadow-lg hover:translate-y-[-2px] transition-all transform duration-200">
+                                        <Download className="w-5 h-5" /> Download Report
+                                    </button>
+                                </div>
+
+                                {/* Right Side: Chart & Info */}
+                                <div className="lg:col-span-8 space-y-8">
+                                    <ChartsSection
+                                        assetType={assetType}
+                                        data={results}
+                                        investedAmount={finalResult.investedAmount}
+                                        estimatedReturns={finalResult.estimatedReturns}
+                                        showInflation={showInflation}
+                                    />
+
+                                    {/* Info blurbs */}
+                                    <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                                            Understanding {config.label} Investment
+                                        </h3>
+                                        <div className="grid md:grid-cols-3 gap-6 text-sm mb-8">
+                                            {config.infoBlurbs.map((blurb, i) => (
+                                                <div key={i} className="space-y-2">
+                                                    <h4 className={`font-semibold ${blurbHeadingClass[blurb.color] ?? 'text-gray-600 dark:text-gray-400'}`}>
+                                                        {blurb.title}
+                                                    </h4>
+                                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{blurb.body}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="pt-6 border-t border-gray-100 dark:border-gray-700">
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 italic text-center">
+                                                Disclaimer: This tool is for educational purposes only. Past performance is not indicative of future returns.
+                                                Investment projections are estimates based on your inputs and do not guarantee actual results.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <PortfolioManager
+                                        items={portfolio}
+                                        onRemove={handleRemoveFromPortfolio}
+                                        onEdit={handleEditPortfolioItem}
+                                        onAddCurrent={handleAddToPortfolio}
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {activeView === 'comparison' && (
+                        <ComparisonDashboard items={portfolio} />
+                    )}
+
+                    {activeView === 'portfolio' && (
+                        <PortfolioDashboard
+                            data={portfolioSummary}
+                            items={portfolio}
+                            itemAssetTypes={itemAssetTypes}
+                        />
+                    )}
                 </div>
             </main>
 
             <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-20 py-10">
                 <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-                    <p className="mb-2">© {new Date().getFullYear()} WealthCalc India. Built for smart investors.</p>
-                    <p className="opacity-75">Disclaimer: This tool is for educational purposes only. Past performance is not indicative of future returns.</p>
+                    <p>© {new Date().getFullYear()} WealthCalc India. Built for smart investors.</p>
                 </div>
             </footer>
         </div>

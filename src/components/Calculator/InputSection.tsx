@@ -184,20 +184,23 @@ export const InputSection: React.FC<InputSectionProps> = (props) => {
                     </div>
 
                     {/* Inflation Toggle */}
-                    <div
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
-                        onClick={() => props.setShowInflation(!props.showInflation)}
-                    >
-                        <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/50">
+                        <div
+                            className="flex items-center justify-between mb-3 cursor-pointer"
+                            onClick={() => props.setShowInflation(!props.showInflation)}
+                        >
+                            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 cursor-pointer select-none">Adjust for Inflation</label>
                             <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 ${props.showInflation ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
                                 <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${props.showInflation ? 'translate-x-4' : 'translate-x-0'}`} />
                             </div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">Adjust for Inflation</label>
                         </div>
                         {props.showInflation && (
-                            <div className="flex items-center gap-3 ml-4" onClick={(e) => e.stopPropagation()}>
-                                <Slider value={[props.inflationRate]} onValueChange={(v) => props.setInflationRate(v[0])} min={0} max={15} step={0.5} className="w-28" />
-                                <div className="min-w-[3rem] text-right font-bold text-blue-600 dark:text-blue-400">{props.inflationRate}%</div>
+                            <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex justify-between items-center text-xs font-bold text-blue-600 dark:text-blue-400">
+                                    <span>Rate</span>
+                                    <span>{props.inflationRate}%</span>
+                                </div>
+                                <Slider value={[props.inflationRate]} onValueChange={(v) => props.setInflationRate(v[0])} min={0} max={15} step={0.5} className="w-full" />
                             </div>
                         )}
                     </div>
