@@ -1,16 +1,23 @@
 
-# ETF Investment Calculator India
+# WealthCalc India — Multi-Asset Investment Calculator
 
-A modern, responsive ETF Investment Calculator built with Next.js, Tailwind CSS, and Recharts.
+A comprehensive, modern, and responsive investment calculator built with Next.js, Tailwind CSS, and Recharts. Now expanded to support multiple asset classes.
 
 ## Features
 
--   **Investment Inputs**: SIP amount, Lumpsum, Duration, Expected Return.
--   **Advanced Options**: Step-up SIP, Expense Ratio, Inflation Adjustment.
--   **Visualizations**: Interactive Line Chart and Allocation Pie Chart.
--   **Themes**: Light and Dark mode.
--   **Data Persistence**: Saves your inputs locally so you don't lose them.
--   **Export**: Download report as PDF or share the link.
+-   **Multi-Asset Support**: Calculate returns for ETFs/Mutual Funds, Crypto, Real Estate, Bank FDs, and Loans.
+-   **Asset-Specific Inputs**:
+    -   **ETF/MF**: SIP, Lumpsum, Step-up SIP, Expense Ratio, Inflation.
+    -   **Crypto**: DCA support with high-volatility projections.
+    -   **Real Estate**: Property appreciation + Rental income calculations.
+    -   **Bank FD**: Principal, Interest Rate, and flexible Compounding frequency.
+    -   **Loans**: EMI calculator with total interest and payment breakdown.
+-   **Smart Visualizations**:
+    -   Interactive Line/Area Charts (Growth Trajectory, Amortisation, Property Value).
+    -   Allocation Pie Charts for all asset types.
+-   **Themes**: Premium Dark and Light mode UI.
+-   **Data Persistence**: Automatically saves your inputs locally.
+-   **Export**: Download tailored reports as PDF or share the link.
 
 ## Getting Started
 
