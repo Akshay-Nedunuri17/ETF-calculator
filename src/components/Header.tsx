@@ -32,7 +32,7 @@ export default function Navbar() {
                     <div className="flex items-center">
                         <div className="flex-shrink-0 flex items-center">
                             <TrendingUp className="h-8 w-8 text-blue-600 dark:text-blue-500 mr-2" />
-                            <span className="font-bold text-xl text-gray-900 dark:text-white">ETF Calc India</span>
+                            <span className="font-bold text-xl text-gray-900 dark:text-white">WealthCalc India</span>
                         </div>
                     </div>
 
