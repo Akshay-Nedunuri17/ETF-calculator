@@ -101,17 +101,25 @@ const badgeText: Record<string, string> = {
 
 // Reusable slider row
 const SliderRow = ({
-    label, display, color, children,
+    label, display, color, children, editable,
 }: {
-    label: string; display: string; color: string; children: React.ReactNode;
+    label: string; display: string; color: string; children: React.ReactNode; editable?: React.ReactNode;
 }) => (
     <div className="group">
         <div className="flex justify-between items-center mb-3">
             <label className={`text-sm font-semibold text-gray-600 dark:text-gray-400 transition-colors ${labelHover[color] ?? ''}`}>
                 {label}
             </label>
-            <div className={`px-3 py-1 rounded-full border ${badgeBg[color] ?? 'bg-gray-50 border-gray-100'}`}>
-                <span className={`font-bold text-base ${badgeText[color] ?? 'text-gray-700'}`}>{display}</span>
+            <div className="flex items-center gap-2">
+                {editable ? (
+                    <div className="w-32">
+                        {editable}
+                    </div>
+                ) : (
+                    <div className={`px-3 py-1 rounded-full border ${badgeBg[color] ?? 'bg-gray-50 border-gray-100'}`}>
+                        <span className={`font-bold text-base ${badgeText[color] ?? 'text-gray-700'}`}>{display}</span>
+                    </div>
+                )}
             </div>
         </div>
         {children}
@@ -119,6 +127,20 @@ const SliderRow = ({
 );
 
 const NumberInput = ({
+    value, onChange, min = 0, max = 100000000, step = 1000,
+}: {
+    value: number; onChange: (v: number) => void;
+    min?: number; max?: number; step?: number;
+}) => (
+    <input
+        type="number"
+        min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow text-right"
+    />
+);
+
+const AdvancedNumberInput = ({
     label, value, onChange, suffix = '', min = 0, max = 100, step = 0.1,
 }: {
     label: string; value: number; onChange: (v: number) => void;
@@ -163,24 +185,24 @@ export const InputSection: React.FC<InputSectionProps> = (props) => {
 
                 {/* ── ETF ────────────────────────────────────────── */}
                 {assetType === 'etf' && (<>
-                    <SliderRow label="Initial Lumpsum" display={formatCurrency(props.initialInvestment)} color="blue">
+                    <SliderRow label="Initial Lumpsum" display={formatCurrency(props.initialInvestment)} color="blue" editable={<NumberInput value={props.initialInvestment} onChange={props.setInitialInvestment} max={10000000} step={1000} />}>
                         <Slider value={[props.initialInvestment]} onValueChange={(v) => props.setInitialInvestment(v[0])} min={0} max={10000000} step={1000} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Monthly SIP" display={formatCurrency(props.monthlyInvestment)} color="purple">
+                    <SliderRow label="Monthly SIP" display={formatCurrency(props.monthlyInvestment)} color="purple" editable={<NumberInput value={props.monthlyInvestment} onChange={props.setMonthlyInvestment} max={500000} step={500} />}>
                         <Slider value={[props.monthlyInvestment]} onValueChange={(v) => props.setMonthlyInvestment(v[0])} min={0} max={500000} step={500} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Expected Return (p.a)" display={`${props.annualReturnRate}%`} color="green">
+                    <SliderRow label="Expected Return (p.a)" display={`${props.annualReturnRate}%`} color="green" editable={<NumberInput value={props.annualReturnRate} onChange={props.setAnnualReturnRate} min={1} max={30} step={0.5} />}>
                         <Slider value={[props.annualReturnRate]} onValueChange={(v) => props.setAnnualReturnRate(v[0])} min={1} max={30} step={0.5} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="orange">
+                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="orange" editable={<NumberInput value={props.years} onChange={props.setYears} min={1} max={60} step={1} />}>
                         <Slider value={[props.years]} onValueChange={(v) => props.setYears(v[0])} min={1} max={60} step={1} className="py-2" />
                     </SliderRow>
 
                     <Divider />
 
                     <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
-                        <NumberInput label="Step-up SIP (%)" value={props.stepUpPercentage} onChange={props.setStepUpPercentage} suffix="%" min={0} max={50} step={1} />
-                        <NumberInput label="Expense Ratio (%)" value={props.expenseRatio} onChange={props.setExpenseRatio} suffix="%" min={0} max={5} step={0.01} />
+                        <AdvancedNumberInput label="Step-up SIP (%)" value={props.stepUpPercentage} onChange={props.setStepUpPercentage} suffix="%" min={0} max={50} step={1} />
+                        <AdvancedNumberInput label="Expense Ratio (%)" value={props.expenseRatio} onChange={props.setExpenseRatio} suffix="%" min={0} max={5} step={0.01} />
                     </div>
 
                     {/* Inflation Toggle */}
@@ -208,16 +230,16 @@ export const InputSection: React.FC<InputSectionProps> = (props) => {
 
                 {/* ── CRYPTO ─────────────────────────────────────── */}
                 {assetType === 'crypto' && (<>
-                    <SliderRow label="Initial Investment" display={formatCurrency(props.initialInvestment)} color="orange">
+                    <SliderRow label="Initial Investment" display={formatCurrency(props.initialInvestment)} color="orange" editable={<NumberInput value={props.initialInvestment} onChange={props.setInitialInvestment} max={10000000} step={1000} />}>
                         <Slider value={[props.initialInvestment]} onValueChange={(v) => props.setInitialInvestment(v[0])} min={0} max={10000000} step={1000} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Monthly DCA" display={formatCurrency(props.monthlyInvestment)} color="amber">
+                    <SliderRow label="Monthly DCA" display={formatCurrency(props.monthlyInvestment)} color="amber" editable={<NumberInput value={props.monthlyInvestment} onChange={props.setMonthlyInvestment} max={500000} step={500} />}>
                         <Slider value={[props.monthlyInvestment]} onValueChange={(v) => props.setMonthlyInvestment(v[0])} min={0} max={500000} step={500} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Avg Annual Return" display={`${props.annualReturnRate}%`} color="yellow">
+                    <SliderRow label="Avg Annual Return" display={`${props.annualReturnRate}%`} color="yellow" editable={<NumberInput value={props.annualReturnRate} onChange={props.setAnnualReturnRate} min={-50} max={200} step={1} />}>
                         <Slider value={[props.annualReturnRate]} onValueChange={(v) => props.setAnnualReturnRate(v[0])} min={-50} max={200} step={1} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="orange">
+                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="orange" editable={<NumberInput value={props.years} onChange={props.setYears} min={1} max={20} step={1} />}>
                         <Slider value={[props.years]} onValueChange={(v) => props.setYears(v[0])} min={1} max={20} step={1} className="py-2" />
                     </SliderRow>
                     <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800 text-xs text-orange-700 dark:text-orange-300">
@@ -227,29 +249,29 @@ export const InputSection: React.FC<InputSectionProps> = (props) => {
 
                 {/* ── REAL ESTATE ────────────────────────────────── */}
                 {assetType === 'realestate' && (<>
-                    <SliderRow label="Property Value" display={formatCurrency(props.propertyValue)} color="emerald">
+                    <SliderRow label="Property Value" display={formatCurrency(props.propertyValue)} color="emerald" editable={<NumberInput value={props.propertyValue} onChange={props.setPropertyValue} min={500000} max={100000000} step={100000} />}>
                         <Slider value={[props.propertyValue]} onValueChange={(v) => props.setPropertyValue(v[0])} min={500000} max={100000000} step={100000} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Annual Appreciation" display={`${props.appreciationRate}%`} color="teal">
+                    <SliderRow label="Annual Appreciation" display={`${props.appreciationRate}%`} color="teal" editable={<NumberInput value={props.appreciationRate} onChange={props.setAppreciationRate} min={0} max={25} step={0.5} />}>
                         <Slider value={[props.appreciationRate]} onValueChange={(v) => props.setAppreciationRate(v[0])} min={0} max={25} step={0.5} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Gross Rental Yield (p.a)" display={`${props.rentalYield}%`} color="cyan">
+                    <SliderRow label="Gross Rental Yield (p.a)" display={`${props.rentalYield}%`} color="cyan" editable={<NumberInput value={props.rentalYield} onChange={props.setRentalYield} min={0} max={10} step={0.5} />}>
                         <Slider value={[props.rentalYield]} onValueChange={(v) => props.setRentalYield(v[0])} min={0} max={10} step={0.5} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="green">
+                    <SliderRow label="Time Period" display={`${props.years} Yrs`} color="green" editable={<NumberInput value={props.years} onChange={props.setYears} min={1} max={30} step={1} />}>
                         <Slider value={[props.years]} onValueChange={(v) => props.setYears(v[0])} min={1} max={30} step={1} className="py-2" />
                     </SliderRow>
                 </>)}
 
                 {/* ── BANK FD ────────────────────────────────────── */}
                 {assetType === 'fd' && (<>
-                    <SliderRow label="Principal Amount" display={formatCurrency(props.fdPrincipal)} color="sky">
+                    <SliderRow label="Principal Amount" display={formatCurrency(props.fdPrincipal)} color="sky" editable={<NumberInput value={props.fdPrincipal} onChange={props.setFdPrincipal} min={1000} max={50000000} step={1000} />}>
                         <Slider value={[props.fdPrincipal]} onValueChange={(v) => props.setFdPrincipal(v[0])} min={1000} max={50000000} step={1000} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Interest Rate (p.a)" display={`${props.fdRate}%`} color="indigo">
+                    <SliderRow label="Interest Rate (p.a)" display={`${props.fdRate}%`} color="indigo" editable={<NumberInput value={props.fdRate} onChange={props.setFdRate} min={3} max={12} step={0.1} />}>
                         <Slider value={[props.fdRate]} onValueChange={(v) => props.setFdRate(v[0])} min={3} max={12} step={0.1} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Tenure" display={`${props.fdTenureMonths} mo`} color="blue">
+                    <SliderRow label="Tenure" display={`${props.fdTenureMonths} mo`} color="blue" editable={<NumberInput value={props.fdTenureMonths} onChange={props.setFdTenureMonths} min={1} max={120} step={1} />}>
                         <Slider value={[props.fdTenureMonths]} onValueChange={(v) => props.setFdTenureMonths(v[0])} min={1} max={120} step={1} className="py-2" />
                     </SliderRow>
                     <div className="space-y-2">
@@ -269,13 +291,13 @@ export const InputSection: React.FC<InputSectionProps> = (props) => {
 
                 {/* ── LOAN ───────────────────────────────────────── */}
                 {assetType === 'loan' && (<>
-                    <SliderRow label="Loan Amount" display={formatCurrency(props.loanAmount)} color="rose">
+                    <SliderRow label="Loan Amount" display={formatCurrency(props.loanAmount)} color="rose" editable={<NumberInput value={props.loanAmount} onChange={props.setLoanAmount} min={10000} max={100000000} step={10000} />}>
                         <Slider value={[props.loanAmount]} onValueChange={(v) => props.setLoanAmount(v[0])} min={10000} max={100000000} step={10000} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Interest Rate (p.a)" display={`${props.loanRate}%`} color="pink">
+                    <SliderRow label="Interest Rate (p.a)" display={`${props.loanRate}%`} color="pink" editable={<NumberInput value={props.loanRate} onChange={props.setLoanRate} min={1} max={30} step={0.1} />}>
                         <Slider value={[props.loanRate]} onValueChange={(v) => props.setLoanRate(v[0])} min={1} max={30} step={0.1} className="py-2" />
                     </SliderRow>
-                    <SliderRow label="Loan Tenure" display={`${props.loanTenureMonths} mo`} color="purple">
+                    <SliderRow label="Loan Tenure" display={`${props.loanTenureMonths} mo`} color="purple" editable={<NumberInput value={props.loanTenureMonths} onChange={props.setLoanTenureMonths} min={6} max={360} step={6} />}>
                         <Slider value={[props.loanTenureMonths]} onValueChange={(v) => props.setLoanTenureMonths(v[0])} min={6} max={360} step={6} className="py-2" />
                     </SliderRow>
                     {/* Live EMI */}
