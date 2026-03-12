@@ -11,6 +11,8 @@ export const metadata: Metadata = {
     keywords: ['ETF Calculator India', 'SIP ETF Returns Calculator', 'Long Term Investment Calculator India', 'Mutual Fund Calculator', 'Compound Interest Calculator'],
 }
 
+import { Providers } from '@/components/Providers'
+
 export default function RootLayout({
     children,
 }: {
@@ -18,7 +20,9 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body className={inter.className}>{children}</body>
+            <body className={inter.className}>
+                <Providers>{children}</Providers>
+            </body>
         </html >
     )
 }
