@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import Navbar from "@/components/Header";
 import { AssetSelector } from "@/components/Calculator/AssetSelector";
 import { InputSection } from "@/components/Calculator/InputSection";
@@ -62,6 +63,10 @@ const DEFAULTS = {
 };
 
 export default function Home() {
+    const { data: session } = useSession();
+    // Key localStorage by user email so each Google account has isolated data
+    const userKey = `wealthCalcData:${session?.user?.email ?? 'guest'}`;
+
     const [assetType, setAssetType] = useState<AssetType>(DEFAULTS.assetType);
 
     // ETF / Crypto
@@ -95,9 +100,12 @@ export default function Home() {
     const [activeView, setActiveView] = useState<ViewMode>('calculator');
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Load from LocalStorage
+    // Load from LocalStorage — re-runs when the user logs in/out (userKey changes)
     useEffect(() => {
-        const savedData = localStorage.getItem("wealthCalcData");
+        setIsLoaded(false);
+        const savedData = localStorage.getItem(userKey);
+        let loadedPortfolio: PortfolioItem[] = [];
+        
         if (savedData) {
             try {
                 const p = JSON.parse(savedData);
@@ -122,17 +130,93 @@ export default function Home() {
                 setLoanTenureMonths(p.loanTenureMonths ?? DEFAULTS.loanTenureMonths);
                 setPortfolio(p.portfolio ?? []);
                 setActiveView(p.activeView ?? 'calculator');
+                loadedPortfolio = p.portfolio ?? [];
             } catch (e) {
                 console.error("Failed to parse saved data", e);
             }
+        } else {
+            // No saved data for this user — reset to defaults
+            setAssetType(DEFAULTS.assetType);
+            setInitialInvestment(DEFAULTS.initialInvestment);
+            setMonthlyInvestment(DEFAULTS.monthlyInvestment);
+            setAnnualReturnRate(DEFAULTS.annualReturnRate);
+            setYears(DEFAULTS.years);
+            setInflationRate(DEFAULTS.inflationRate);
+            setStepUpPercentage(DEFAULTS.stepUpPercentage);
+            setExpenseRatio(DEFAULTS.expenseRatio);
+            setShowInflation(DEFAULTS.showInflation);
+            setPropertyValue(DEFAULTS.propertyValue);
+            setRentalYield(DEFAULTS.rentalYield);
+            setAppreciationRate(DEFAULTS.appreciationRate);
+            setFdPrincipal(DEFAULTS.fdPrincipal);
+            setFdRate(DEFAULTS.fdRate);
+            setFdTenureMonths(DEFAULTS.fdTenureMonths);
+            setCompoundingFrequency(DEFAULTS.compoundingFrequency);
+            setLoanAmount(DEFAULTS.loanAmount);
+            setLoanRate(DEFAULTS.loanRate);
+            setLoanTenureMonths(DEFAULTS.loanTenureMonths);
+            setPortfolio([]);
+            setActiveView('calculator');
         }
-        setIsLoaded(true);
-    }, []);
+        
+        // Handle loading from dashboard or direct links via URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        const viewParam = urlParams.get('view');
+        if (viewParam === 'calculator' || viewParam === 'portfolio' || viewParam === 'comparison') {
+            setActiveView(viewParam as ViewMode);
+        }
+        
+        const assetParam = urlParams.get('asset');
+        if (assetParam === 'etf' || assetParam === 'crypto' || assetParam === 'realestate' || assetParam === 'fd' || assetParam === 'loan') {
+            setAssetType(assetParam);
+        }
+        
+        const inflationParam = urlParams.get('inflation');
+        if (inflationParam === 'true') {
+            setShowInflation(true);
+        }
 
-    // Save to LocalStorage
+        const loadId = urlParams.get('loadId');
+        if (loadId && loadedPortfolio.length > 0) {
+            const itemToLoad = loadedPortfolio.find(item => item.id === loadId);
+            if (itemToLoad) {
+                const { config: c } = itemToLoad;
+                setAssetType(c.assetType);
+                if (c.initialInvestment !== undefined) setInitialInvestment(c.initialInvestment);
+                if (c.monthlyInvestment !== undefined) setMonthlyInvestment(c.monthlyInvestment);
+                if (c.annualReturnRate !== undefined) setAnnualReturnRate(c.annualReturnRate);
+                if (c.years !== undefined) setYears(c.years);
+                if (c.inflationRate !== undefined) {
+                    setInflationRate(c.inflationRate);
+                    setShowInflation(c.inflationRate > 0);
+                }
+                if (c.stepUpPercentage !== undefined) setStepUpPercentage(c.stepUpPercentage);
+                if (c.expenseRatio !== undefined) setExpenseRatio(c.expenseRatio);
+                if (c.propertyValue !== undefined) setPropertyValue(c.propertyValue);
+                if (c.rentalYield !== undefined) setRentalYield(c.rentalYield);
+                if (c.appreciationRate !== undefined) setAppreciationRate(c.appreciationRate);
+                if (c.fdPrincipal !== undefined) setFdPrincipal(c.fdPrincipal);
+                if (c.fdRate !== undefined) setFdRate(c.fdRate);
+                if (c.fdTenureMonths !== undefined) setFdTenureMonths(c.fdTenureMonths);
+                if (c.compoundingFrequency !== undefined) setCompoundingFrequency(c.compoundingFrequency);
+                if (c.loanAmount !== undefined) setLoanAmount(c.loanAmount);
+                if (c.loanRate !== undefined) setLoanRate(c.loanRate);
+                if (c.loanTenureMonths !== undefined) setLoanTenureMonths(c.loanTenureMonths);
+                setActiveView('calculator');
+                
+                // Clear URL param to prevent reload issues later
+                window.history.replaceState({}, '', '/');
+            }
+        }
+
+        setIsLoaded(true);
+    }, [userKey]);
+
+    // Save to LocalStorage — keyed by user so each Google account's data is isolated
     useEffect(() => {
         if (!isLoaded) return;
-        localStorage.setItem("wealthCalcData", JSON.stringify({
+        localStorage.setItem(userKey, JSON.stringify({
             assetType, initialInvestment, monthlyInvestment, annualReturnRate, years,
             inflationRate, stepUpPercentage, expenseRatio, showInflation,
             propertyValue, rentalYield, appreciationRate,
